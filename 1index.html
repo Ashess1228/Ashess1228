@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>アクセント型知覚実験</title>
+    <!-- jsPsych core library -->
+    <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/jspsych.js"></script>
+    <!-- jsPsych styles -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/css/jspsych.css">
+    <!-- jsPsych html button plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/jspsych@6.3.1/plugins/jspsych-html-button-response.js"></script>
+</head>
+<body>
+    <div id="jspsych-target"></div>
+
+    <script>
+
+        var audioFiles = [
+            '得る.wav', 
+            '混む.wav',
+            '行う.wav'
+        ];
+
+
+        var sentences = [
+            '彼女はその本を__ことができた。昨日、彼女はついにその本を__。',
+            'この店はいつも__。昨日、この店は非常に__。',
+            '彼女はイベントを__予定だ。昨日、彼女はイベントを__。'
+        ];
+
+
+        var choices = [
+            ['得る①', '得る⓪'], 
+            ['混む①', '混む⓪'],
+            ['おこなう①', 'おこなう⓪', 'おこなう②', 'おこなう③']
+        ];
+
+
+        var extraChoices = [
+            ['得た①', '得た⓪'],
+            ['混んだ①', 'こんだ⓪'],
+            ['おこなった①', 'おこなった⓪', 'おこなった②', 'おこなった③']
+        ];
+
+        var timeline = [];
+        var replayCount = 0; 
+
+
+        for (var i = 0; i < audioFiles.length; i++) {
+            let count = 0; 
+            let currentAudio = audioFiles[i]; 
+
+
+            var audioTrial = {
+                type: 'html-button-response',
+                stimulus: '<button class="jspsych-btn" id="play-button">録音を再生</button>' + 
+                          '<p>' + sentences[i].replace(/__/g, '_____') + '</p>' +
+                          '<button class="jspsych-btn" id="next-button">next</button>',
+                choices: [], 
+                on_load: function() {
+                    var played = false; 
+                    document.getElementById('play-button').addEventListener('click', function() {
+                        if (!played) {
+                            count++;  
+                            var audio = new Audio(currentAudio); 
+                            audio.play(); 
+                            console.log("Playing audio: " + currentAudio);
+                            played = true; 
+                            audio.onended = function() {
+                                played = false; 
+                            };
+                        }
+                    });
+
+                    document.getElementById('next-button').addEventListener('click', function() {
+                        jsPsych.finishTrial(); 
+                    });
+                },
+                on_finish: function(data) {
+                    data.replay_count = count;  
+                }
+            };
+            timeline.push(audioTrial);
+
+      
+            var choiceTrial = {
+                type: 'html-button-response',
+                stimulus: '<button class="jspsych-btn" id="play-choice-button">録音を再生</button>' + 
+                          '<p>どちらのアクセント型に聞こえますか？</p>',
+                choices: choices[i],
+                button_html: '<button class="jspsych-btn">%choice%</button>',
+                on_load: function() {
+                    document.getElementById('play-choice-button').addEventListener('click', function() {
+                        var audio = new Audio(currentAudio);
+                        audio.play();
+                        console.log("Playing audio again: " + currentAudio);
+                    });
+                }
+            };
+            timeline.push(choiceTrial);
+
+           
+            var extraChoiceTrial = {
+                type: 'html-button-response',
+                stimulus: '<button class="jspsych-btn" id="play-extra-button">録音を再生</button>' + 
+                          '<p>どちらのアクセント型に聞こえますか？</p>',
+                choices: extraChoices[i],
+                button_html: '<button class="jspsych-btn">%choice%</button>',
+                on_load: function() {
+                    document.getElementById('play-extra-button').addEventListener('click', function() {
+                        var audio = new Audio(currentAudio);
+                        audio.play();
+                        console.log("Playing audio again: " + currentAudio);
+                    });
+                }
+            };
+            timeline.push(extraChoiceTrial);
+        }
+
+      
+        var endTrial = {
+            type: 'html-button-response',
+            stimulus: '実験終了です。ご協力いただきありがとうございました。',
+            choices: jsPsych.NO_KEYS,
+            trial_duration: 2000
+        };
+        timeline.push(endTrial);
+
+    
+        jsPsych.init({
+            timeline: timeline,
+            preload_audio: audioFiles,
+            on_finish: function() {
+               
+                var data = jsPsych.data.get().csv();
+                var replayData = jsPsych.data.get().addToAll({ replay_count: replayCount }).csv(); // 包含「録音を再生」点击次数
+                var blob = new Blob([replayData], { type: 'text/csv' });
+                var url = window.URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'accent_experiment_data_with_replay_count.csv';
+                a.click();
+            }
+        });
+    </script>
+</body>
+</html>
